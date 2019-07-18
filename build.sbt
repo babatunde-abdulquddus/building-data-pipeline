@@ -27,9 +27,10 @@ lazy val kafka = (project in file("kafka")).settings(
   name := "working-with-kafka",
   commonSettings,
   libraryDependencies ++= Seq(
-    "org.apache.kafka" % "kafka-streams" % "2.3.0",
-    "org.apache.kafka" % "kafka-clients" % "2.3.0",
-    "com.pubnub"       % "pubnub"        % "4.6.5"
+    "org.apache.kafka"            % "kafka-streams" % "2.3.0",
+    "org.apache.kafka"            % "kafka-clients" % "2.3.0",
+    "com.pubnub"                  % "pubnub-gson"   % "4.25.0",
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
   )
 )
 
