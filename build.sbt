@@ -23,9 +23,17 @@ val sparkVersion = "2.4.3"
 
 lazy val root = (project in file(".")).aggregate(kafka, spark)
 
+
+  val sharedDeps = libraryDependencies ++= Seq(
+    "io.spray"  %% "spray-json"   % "1.3.5",
+    "org.slf4j"  % "slf4j-simple" % "1.7.25"
+  )
+
+
 lazy val kafka = (project in file("kafka")).settings(
   name := "working-with-kafka",
   commonSettings,
+  sharedDeps,
   libraryDependencies ++= Seq(
     "org.apache.kafka"            % "kafka-streams" % "2.3.0",
     "org.apache.kafka"            % "kafka-clients" % "2.3.0",
@@ -38,6 +46,7 @@ lazy val spark = (project in file("spark"))
   .settings(
     name := "working-with-spark",
     commonSettings,
+    sharedDeps,
     libraryDependencies ++= Seq(
       "org.apache.spark"   %% "spark-core"                      % sparkVersion % Compile,
       "org.apache.spark"   %% "spark-sql"                       % sparkVersion % Compile,

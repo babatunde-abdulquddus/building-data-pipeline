@@ -3,18 +3,14 @@ package io.data.kafka
 import java.util.Properties
 
 import scala.collection.JavaConversions._
-import scala.io.StdIn
-
-import com.pubnub.api.callbacks.SubscribeCallback
-import com.pubnub.api.models.consumer.pubsub.{PNMessageResult, PNPresenceEventResult}
-import com.pubnub.api.models.consumer.PNStatus
 import com.pubnub.api.{PNConfiguration, PubNub}
-
+import com.pubnub.api.callbacks.SubscribeCallback
+import com.pubnub.api.models.consumer.PNStatus
+import com.pubnub.api.models.consumer.pubsub.{PNMessageResult, PNPresenceEventResult}
 import com.typesafe.scalalogging.LazyLogging
-
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 
-object PubNubClient extends App with LazyLogging {
+trait IPubNubClient extends LazyLogging {
 
   //PubNub config
   val pnConfig = new PNConfiguration
@@ -36,11 +32,6 @@ object PubNubClient extends App with LazyLogging {
     }
   })
 
-  pubNub
-    .subscribe()
-    .channels(List("pubnub-sensor-network"))
-    .execute()
-
   // Kafka producer config
   val props = new Properties()
   props.put("bootstrap.servers", "localhost:29092")
@@ -51,7 +42,7 @@ object PubNubClient extends App with LazyLogging {
 
   def writeToKafka(event: String): Unit = {
     producer.send(
-      new ProducerRecord[String, String]("iot-sensor", event),
+      new ProducerRecord[String, String](topicName, event),
       new Callback {
         override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit = {
           if(exception == null) logger.info("Successful write")
@@ -61,5 +52,13 @@ object PubNubClient extends App with LazyLogging {
     )
   }
 
-  StdIn.readLine()
+  def subscribe(channels: String*): Unit = {
+    pubNub
+      .subscribe()
+      .channels(channels)
+      .execute()
+  }
+
+
+  def topicName: String
 }
