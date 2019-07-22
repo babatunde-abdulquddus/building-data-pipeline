@@ -1,71 +1,127 @@
 package io.data.kafka
 
-import java.util
+import java.time.Duration
 import java.util.Properties
 
 import scala.collection.JavaConversions._
 import scala.io.StdIn
-import org.apache.kafka._
-import clients.consumer.{ConsumerConfig, ConsumerRecords, KafkaConsumer}
+
 import com.typesafe.scalalogging.{LazyLogging, Logger}
+
+import org.apache.kafka._
+import clients.consumer.{ConsumerConfig, KafkaConsumer}
+import common.TopicPartition
 import common.serialization.StringDeserializer
-import org.apache.kafka.common.TopicPartition
 
-object KafkaConsumerExample extends App with LazyLogging {
+object KafkaConsumerExample extends App
+  with LazyLogging {
 
-  logger.info("Polling for events from stock-prices topic")
+  logger.info(
+    "Polling for events from stock-prices topic"
+  )
 
+  val topicName = "stock-prices"
 
   while(true) {
 
     val firstConsumer = new StockPriceConsumer() {
-      override val logger =  Logger("io.data.kafka.StockPriceConsumer-1")
+      override val logger =
+        Logger("io.data.kafka.StockPriceConsumer-1")
     }
 
     val secondConsumer = new StockPriceConsumer() {
-      override val logger =  Logger("io.data.kafka.StockPriceConsumer-2")
+      override val logger =
+        Logger("io.data.kafka.StockPriceConsumer-2")
     }
 
-    firstConsumer.consumer.subscribe(List("stock-prices"))
-    //firstConsumer.consumer.assign(List(new TopicPartition("stock-prices", 0)))
-    //secondConsumer.consumer.assign(List(new TopicPartition("stock-prices", 1)))
+    firstConsumer.consumer.assign(
+      List(
+        new TopicPartition(
+          topicName,
+          0
+        )
+      )
+    )
 
-    val firstRecords: ConsumerRecords[String, StockPrice] = firstConsumer.consumer.poll(java.time.Duration.ofMillis(1000))
+    secondConsumer.consumer.assign(
+      List(
+        new TopicPartition(
+          topicName,
+          1
+        )
+      )
+    )
 
-  // val secondRecords: ConsumerRecords[String, StockPrice] = secondConsumer.consumer.poll(java.time.Duration.ofMillis(1000))
+    val firstConsumerRecords =
+      firstConsumer
+        .consumer
+        .poll(Duration.ofMillis(1000))
 
-    if(firstRecords.count() != 0) {
-      firstRecords.foreach{ record =>
-        firstConsumer.logger.info(s"Consumed StockPrice Record: ${record.value()} in partition ${record.partition()} ")
+   val secondConsumerRecords =
+     secondConsumer
+       .consumer
+       .poll(Duration.ofMillis(1000))
+
+    if(firstConsumerRecords.count() != 0) {
+      firstConsumerRecords.foreach{ record =>
+        firstConsumer.logger.info(
+          s"Consumed StockPrice Record: " +
+          s" ${record.value()} in partition: " +
+          s" ${record.partition()} "
+        )
       }
     }
-    Thread.sleep(100)
-/*
-    if(secondRecords.count() != 0) {
-      firstRecords.foreach{ record =>
-        secondConsumer.logger.info(s"Consumed StockPrice Record: ${record.value()} in partition ${record.partition()} ")
+
+
+    if(secondConsumerRecords.count() != 0) {
+      secondConsumerRecords.foreach{ record =>
+        secondConsumer.logger.info(
+          s"Consumed StockPrice Record: " +
+          s" ${record.value()} in partition: " +
+          s" ${record.partition()} "
+        )
       }
     }
-*/
+
     firstConsumer.consumer.close()
-    //secondConsumer.consumer.close()
+    secondConsumer.consumer.close()
     StdIn.readLine()
  }
 }
 
 trait StockPriceConsumer {
   val logger: Logger
+
   // Kafka consumer config
   val props = new Properties()
-  props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092")
-  props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, classOf[StringDeserializer])
-  props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, classOf[StockPriceDeserializer])
-  props.put(ConsumerConfig.GROUP_ID_CONFIG, "stock-prices-consumer-group")
-  props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
-  props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-  // props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "50")
 
-  val consumer = new KafkaConsumer[String, StockPrice](props)
+  props.put(
+    ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+    "localhost:29092"
+  )
+  props.put(
+    ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+    classOf[StringDeserializer]
+  )
+  props.put(
+    ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+    classOf[StockPriceDeserializer]
+  )
+  props.put(
+    ConsumerConfig.GROUP_ID_CONFIG,
+    "stock-prices-consumer-group"
+  )
+  props.put(
+    ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
+    "false"
+  )
+  props.put(
+    ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+    "earliest"
+  )
+
+  val consumer =
+    new KafkaConsumer[String, StockPrice](props)
 }
 
 

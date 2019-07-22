@@ -1,28 +1,21 @@
 package io.data.spark
 
 import scala.concurrent.duration._
-
-import com.datastax.spark.connector.cql._
-
-import CassandraConnectorConf._
-
-import DefaultAuthConfFactory._
-
-import com.datastax.spark._
-
-
-import connector.rdd.ReadConf.SplitSizeInMBParam
+import scala.io.StdIn
 
 import org.apache.spark.sql._
-
 import cassandra._
 import functions._
 import streaming.Trigger
 import types._
 
-import scala.io.StdIn
+import com.datastax.spark._
+import connector.cql._
+import CassandraConnectorConf._
+import DefaultAuthConfFactory._
+import connector.rdd.ReadConf.SplitSizeInMBParam
 
-class StockSparkStreamingExample {
+class StockStreamingExample {
 
   /***
     * {
@@ -56,7 +49,6 @@ class StockSparkStreamingExample {
     options = cassyOptions
   )
 
-
   val kafkaStream = spark
     .readStream
     .format("kafka")
@@ -64,36 +56,58 @@ class StockSparkStreamingExample {
     .option("subscribe", "market-orders")
     .option("startingOffsets","earliest")
     .option("kafkaConsumer.pollTimeoutMs", "256")
-    // .option("checkpointLocation", "/tmp/checkpoint")
-    //  .option("failOnDataLoss", "true")
-    //   .option("fetchOffset.numRetries", "3")
-    //   .option("fetchOffset.retryIntervalMs", "10")
-    //   .option("maxOffsetsPerTrigger", "1000")
     .load()
 
   kafkaStream.printSchema()
 
-
-  // Defining market orders schema approach
+  // Defining market orders schema
   val schema = StructType(
     Array(
-      StructField("bid_price", DoubleType, nullable = false),
-      StructField("order_quantity", LongType, nullable = false),
-      StructField("symbol", StringType, nullable = false),
-      StructField("timestamp", LongType, nullable = false),
-      StructField("trade_type", StringType, nullable = false)
+      StructField(
+        name = "bid_price",
+        dataType = DoubleType,
+        nullable = false
+      ),
+      StructField(
+        name = "order_quantity",
+        dataType = LongType,
+        nullable = false
+      ),
+      StructField(
+        name = "symbol",
+        dataType = StringType,
+        nullable = false
+      ),
+      StructField(
+        name = "timestamp",
+        dataType = LongType,
+        nullable = false
+      ),
+      StructField(
+        name = "trade_type",
+        dataType = StringType,
+        nullable = false
+      )
     )
   )
 
   val marketOrdersStream = kafkaStream
     .selectExpr("CAST(value AS STRING)")
-    .select(from_json(col("value") as "market_orders_records", schema))
+    .select(
+      from_json(
+        col("value") as "market_orders_records",
+        schema
+      )
+    )
     .select("market_orders_records.*")
 
   marketOrdersStream.printSchema()
 
   val resultStream = marketOrdersStream
-    .withColumn("event_time", from_unixtime(col("timestamp")))
+    .withColumn(
+      "event_time",
+      from_unixtime(col("timestamp"))
+    )
     .groupBy(
       col("symbol"),
       col("trade_type"),
@@ -104,6 +118,7 @@ class StockSparkStreamingExample {
       )
     )
     .agg(
+      // add count agg
       avg("bid_price") alias "avg_bid_price",
       max("bid_price") alias "max_bid_price",
       min("bid_price") alias "min_bid_price",
@@ -117,7 +132,7 @@ class StockSparkStreamingExample {
     .writeStream
     .queryName("market-orders-agg")
     .outputMode("append")
-    .trigger(Trigger.ProcessingTime(3 minutes))
+    .trigger(Trigger.ProcessingTime(3.minutes))
     .foreachBatch {
       (batch: DataFrame, batchId: Long) =>
         batch
@@ -135,28 +150,15 @@ class StockSparkStreamingExample {
           .orderBy(asc("symbol"))
           .write
           .mode(SaveMode.Append)
-          .cassandraFormat(table = "market_order_agg", keyspace = "analytics")
+          .cassandraFormat(
+            table = "market_order_agg",
+            keyspace = "analytics"
+          )
           .save()
     }
     .start()
 
-
   streamingQuery.awaitTermination()
 
   StdIn.readLine()
-/*
-  val socketStream = spark
-    .readStream
-    .format("socket")
-    .options(Map[String, String]("host" -> "localhost", "port" -> "9786", "includeTimestamp" -> "true"))
-    .load()
-
-  val sampleQuery = socketStream
-    .writeStream
-    .format("memory")
-    .queryName("memory-sink")
-    .outputMode("append")
-    .trigger(Trigger.ProcessingTime(2 minutes))
-    .start()
-    */
 }

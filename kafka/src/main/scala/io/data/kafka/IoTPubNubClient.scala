@@ -3,7 +3,8 @@ package io.data.kafka
 
 import scala.io.StdIn
 
-object IoTPubNubClient extends IPubNubClient with  App {
+object IoTPubNubClient extends IPubNubClient
+  with App {
 
   override def topicName: String = "iot-sensor"
 
