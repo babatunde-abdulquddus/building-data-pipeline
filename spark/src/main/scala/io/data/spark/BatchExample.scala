@@ -11,7 +11,7 @@ object BatchExample extends App {
   val spark = SparkSession
     .builder()
     .appName("spark-sample")
-    .master("local[8]")
+    .master("local[*]")
     .getOrCreate()
 
   val bankData = spark
