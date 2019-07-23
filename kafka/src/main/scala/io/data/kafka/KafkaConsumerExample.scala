@@ -83,9 +83,9 @@ object KafkaConsumerExample extends App
       }
     }
 
+    StdIn.readLine()
     firstConsumer.consumer.close()
     secondConsumer.consumer.close()
-    StdIn.readLine()
  }
 }
 
