@@ -11,7 +11,7 @@ object SparkStreaming extends App {
   val spark = SparkSession
     .builder()
     .appName("spark-streaming-sample")
-    .master("local[8]")
+    .master("local[*]")
     .getOrCreate()
 
   val socketStream = spark.readStream
